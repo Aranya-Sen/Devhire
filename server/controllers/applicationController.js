@@ -5,11 +5,11 @@ const applyToJob = async (req, res, next) => {
   try {
     const candidate_id = req.user.id;
     const { jobId } = req.params;
-    const { resume_url } = req.body; // optional, if candidate attaches custom one
+    const { resume_url } = req.body;
 
     // Check job exists and is open
     const job = await pool.query(
-      'SELECT id, last_date, status FROM jobs WHERE id = $1',
+      'SELECT id, last_date, status, min_cgpa FROM jobs WHERE id = $1',
       [jobId]
     );
     if (job.rows.length === 0) {
@@ -22,7 +22,7 @@ const applyToJob = async (req, res, next) => {
       return res.status(400).json({ message: 'Application deadline has passed' });
     }
 
-    // Check already applied — DB has UNIQUE constraint but give a clean message
+    // Check already applied
     const alreadyApplied = await pool.query(
       'SELECT id FROM applications WHERE job_id = $1 AND candidate_id = $2',
       [jobId, candidate_id]
@@ -31,15 +31,21 @@ const applyToJob = async (req, res, next) => {
       return res.status(400).json({ message: 'You have already applied to this job' });
     }
 
-    // Get candidate's resume_url as default if no custom one provided
-    let finalResumeUrl = resume_url;
-    if (!finalResumeUrl) {
-      const candidate = await pool.query(
-        'SELECT resume_url FROM candidates WHERE id = $1',
-        [candidate_id]
-      );
-      finalResumeUrl = candidate.rows[0].resume_url;
+    // Get candidate resume and cgpa in one query
+    const candidate = await pool.query(
+      'SELECT cgpa, resume_url FROM candidates WHERE id = $1',
+      [candidate_id]
+    );
+
+    // Check CGPA requirement
+    if (parseFloat(candidate.rows[0].cgpa) < parseFloat(job.rows[0].min_cgpa)) {
+      return res.status(400).json({
+        message: `Your CGPA (${candidate.rows[0].cgpa}) does not meet the minimum requirement of ${job.rows[0].min_cgpa}`
+      });
     }
+
+    // Use provided resume or fall back to candidate's stored resume
+    const finalResumeUrl = resume_url || candidate.rows[0].resume_url;
 
     if (!finalResumeUrl) {
       return res.status(400).json({ message: 'No resume found. Please upload a resume before applying' });
