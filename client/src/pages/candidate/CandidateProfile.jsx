@@ -58,25 +58,49 @@ const CandidateProfile = () => {
   };
 
   const handleResumeUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('resume', file);
-    setUploading(true);
-    setError('');
-    setSuccess('');
-    try {
-      const res = await api.post('/api/upload/resume', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setProfile((prev) => ({ ...prev, resume_url: res.data.resume_url }));
-      setSuccess('Resume uploaded successfully');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
-  };
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.type !== 'application/pdf') {
+    setError('Only PDF files are allowed');
+    return;
+  }
+
+  setUploading(true);
+  setError('');
+  setSuccess('');
+
+  try {
+    // Step 1 — get pre-signed URL from backend
+    const presignRes = await api.post('/api/upload/resume/presign', {
+      fileName: file.name,
+      contentType: file.type
+    });
+
+    const { uploadUrl, key, fileUrl } = presignRes.data;
+
+    // Step 2 — upload directly to S3 using pre-signed URL
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type
+      }
+    });
+
+    // Step 3 — confirm upload with backend to save URL in DB
+    const confirmRes = await api.post('/api/upload/resume/confirm', {
+      fileUrl,
+      key
+    });
+
+    setProfile((prev) => ({ ...prev, resume_url: confirmRes.data.resume_url }));
+    setSuccess('Resume uploaded successfully');
+  } catch (err) {
+    setError(err.response?.data?.message || 'Upload failed');
+  } finally {
+    setUploading(false);
+  }
+};
 
   if (loading) return <Loader />;
 

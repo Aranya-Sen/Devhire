@@ -1,15 +1,43 @@
 const pool = require('../config/db');
-const { uploadPDF, deletePDF } = require('../utils/cloudinaryHelper');
+const { getUploadPresignedUrl, deleteResume } = require('../utils/s3Helper');
 
-const uploadResume = async (req, res, next) => {
+// Step 1 — candidate requests a pre-signed upload URL
+// Frontend uses this URL to upload directly to S3
+const getResumeUploadUrl = async (req, res, next) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+    const candidate_id = req.user.id;
+    const { fileName, contentType } = req.body;
+
+    if (!fileName || !contentType) {
+      return res.status(400).json({ message: 'fileName and contentType are required' });
     }
 
-    const candidate_id = req.user.id;
+    if (contentType !== 'application/pdf') {
+      return res.status(400).json({ message: 'Only PDF files are allowed' });
+    }
 
-    // Get existing resume public_id to delete old one from cloudinary
+    // Generate unique filename to avoid collisions
+    const uniqueFileName = `${candidate_id}-${Date.now()}-${fileName}`;
+    const { uploadUrl, key, fileUrl } = await getUploadPresignedUrl(uniqueFileName, contentType);
+
+    res.status(200).json({ uploadUrl, key, fileUrl });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Step 2 — after frontend uploads to S3, it calls this to confirm
+// and save the S3 URL to the candidate's profile
+const confirmResumeUpload = async (req, res, next) => {
+  try {
+    const candidate_id = req.user.id;
+    const { fileUrl, key } = req.body;
+
+    if (!fileUrl || !key) {
+      return res.status(400).json({ message: 'fileUrl and key are required' });
+    }
+
+    // Get old resume key to delete from S3
     const existing = await pool.query(
       'SELECT resume_url FROM candidates WHERE id = $1',
       [candidate_id]
@@ -17,40 +45,30 @@ const uploadResume = async (req, res, next) => {
 
     const oldUrl = existing.rows[0].resume_url;
 
-    // If old resume exists on cloudinary, delete it
-    if (oldUrl && oldUrl.includes('cloudinary')) {
-      // Extract public_id from URL
-      // Cloudinary raw URL pattern: .../raw/upload/v123456/devhire/resumes/filename.pdf
-      const parts = oldUrl.split('/');
-      const fileWithExt = parts[parts.length - 1];
-      const filename = fileWithExt.replace('.pdf', '');
-      const publicId = `devhire/resumes/${filename}`;
-
+    // Delete old resume from S3 if exists
+    if (oldUrl && oldUrl.includes('amazonaws.com')) {
       try {
-        await deletePDF(publicId);
+        // Extract key from URL
+        const oldKey = oldUrl.split('.amazonaws.com/')[1];
+        await deleteResume(oldKey);
       } catch (deleteErr) {
-        // Non-blocking — log but don't fail the upload
-        console.error('Could not delete old resume from Cloudinary:', deleteErr.message);
+        console.error('Could not delete old resume from S3:', deleteErr.message);
       }
     }
-
-    // Upload new resume
-    const fileName = `${candidate_id}-${Date.now()}`;
-    const result = await uploadPDF(req.file.buffer, fileName);
 
     // Update candidate's resume_url in DB
     await pool.query(
       'UPDATE candidates SET resume_url = $1 WHERE id = $2',
-      [result.secure_url, candidate_id]
+      [fileUrl, candidate_id]
     );
 
     res.status(200).json({
-      message: 'Resume uploaded successfully',
-      resume_url: result.secure_url
+      message: 'Resume saved successfully',
+      resume_url: fileUrl
     });
   } catch (err) {
     next(err);
   }
 };
 
-module.exports = { uploadResume };
+module.exports = { getResumeUploadUrl, confirmResumeUpload };
