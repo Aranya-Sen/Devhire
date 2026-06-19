@@ -102,6 +102,15 @@ const CandidateProfile = () => {
   }
 };
 
+  const handleViewResume = async () => {
+  try {
+    const key = profile.resume_url.split('.amazonaws.com/')[1];
+    const res = await api.post('/api/upload/resume/view-url', { key });
+    window.open(res.data.url, '_blank');
+  } catch (err) {
+    alert('Could not load resume');
+  }
+};
   if (loading) return <Loader />;
 
   return (
@@ -143,10 +152,12 @@ const CandidateProfile = () => {
               <span className="text-gray-500 font-medium">Resume</span>
               <div className="flex items-center gap-3">
                 {profile.resume_url ? (
-                  <a href={profile.resume_url} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm">
+                  <button
+                    onClick={handleViewResume}
+                    className="text-blue-600 hover:underline text-sm"
+                  >
                     View Resume
-                  </a>
+                  </button>
                 ) : (
                   <span className="text-gray-400">No resume uploaded</span>
                 )}
