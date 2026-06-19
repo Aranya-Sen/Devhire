@@ -10,4 +10,6 @@ router.post('/resume/presign', protect, authorize('candidate'), getResumeUploadU
 // Step 2 — confirm upload and save URL to DB
 router.post('/resume/confirm', protect, authorize('candidate'), confirmResumeUpload);
 
+router.post('/resume/view-url', protect, getResumeViewUrl);
+
 module.exports = router;

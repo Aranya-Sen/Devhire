@@ -32,6 +32,17 @@ const MyApplications = () => {
     }
   };
 
+  const handleViewResume = async (resumeUrl) => {
+  try {
+    // Extract S3 key from URL
+    const key = resumeUrl.split('.amazonaws.com/')[1];
+    const res = await api.post('/api/upload/resume/view-url', { key });
+    window.open(res.data.url, '_blank');
+  } catch (err) {
+    alert('Could not load resume');
+  }
+};
+
   if (loading) return <Loader />;
 
   return (
@@ -56,14 +67,12 @@ const MyApplications = () => {
               </div>
 
               <div className="flex justify-between items-center mt-4">
-                <a
-                  href={app.resume_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handleViewResume(app.resume_url)}
                   className="text-blue-600 text-sm hover:underline"
                 >
                   View Submitted Resume →
-                </a>
+                </button>
 
                 {app.pipeline_stage === 'Applied' && (
                   <button

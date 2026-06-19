@@ -71,4 +71,19 @@ const confirmResumeUpload = async (req, res, next) => {
   }
 };
 
-module.exports = { getResumeUploadUrl, confirmResumeUpload };
+const getResumeViewUrl = async (req, res, next) => {
+  try {
+    const { key } = req.body;
+    if (!key) {
+      return res.status(400).json({ message: 'key is required' });
+    }
+
+    const { getViewPresignedUrl } = require('../utils/s3Helper');
+    const url = await getViewPresignedUrl(key);
+    res.status(200).json({ url });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getResumeUploadUrl, confirmResumeUpload, getResumeUploadUrl };

@@ -48,6 +48,16 @@ const ViewApplications = () => {
     }
   };
 
+  const handleViewResume = async (resumeUrl) => {
+  try {
+    // Extract S3 key from URL
+    const key = resumeUrl.split('.amazonaws.com/')[1];
+    const res = await api.post('/api/upload/resume/view-url', { key });
+    window.open(res.data.url, '_blank');
+  } catch (err) {
+    alert('Could not load resume');
+  }
+};
   if (loading) return <Loader />;
 
   return (
@@ -78,10 +88,12 @@ const ViewApplications = () => {
               </div>
 
               <div className="flex justify-between items-center mt-4">
-                <a href={app.resume_url} target="_blank" rel="noopener noreferrer"
-                  className="text-blue-600 text-sm hover:underline">
-                  View Resume →
-                </a>
+                <button
+                  onClick={() => handleViewResume(app.resume_url)}
+                  className="text-blue-600 text-sm hover:underline"
+                >
+                  View Submitted Resume →
+                </button>
 
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">Move to:</span>
