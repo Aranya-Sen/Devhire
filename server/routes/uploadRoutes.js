@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getResumeUploadUrl, confirmResumeUpload } = require('../controllers/uploadController');
+const { getResumeUploadUrl, confirmResumeUpload, getResumeViewUrl } = require('../controllers/uploadController');
 const protect = require('../middleware/authMiddleware');
 const authorize = require('../middleware/rbacMiddleware');
 
