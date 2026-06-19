@@ -37,6 +37,16 @@ const ManageCandidates = () => {
       c.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleViewResume = async () => {
+  try {
+    const key = profile.resume_url.split('.amazonaws.com/')[1];
+    const res = await api.post('/api/upload/resume/view-url', { key });
+    window.open(res.data.url, '_blank');
+  } catch (err) {
+    alert('Could not load resume');
+  }
+};
+
   if (loading) return <Loader />;
 
   return (
@@ -76,8 +86,11 @@ const ManageCandidates = () => {
                   <td className="px-4 py-3 text-gray-500">{c.year_of_graduation || '—'}</td>
                   <td className="px-4 py-3">
                     {c.resume_url ? (
-                      <a href={c.resume_url} target="_blank" rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline">View</a>
+                      <button
+                        onClick={handleViewResume}
+                        className="text-blue-600 hover:underline text-sm">
+                          View
+                      </button>
                     ) : (
                       <span className="text-gray-400">None</span>
                     )}
