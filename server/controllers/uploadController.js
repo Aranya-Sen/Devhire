@@ -86,4 +86,4 @@ const getResumeViewUrl = async (req, res, next) => {
   }
 };
 
-module.exports = { getResumeUploadUrl, confirmResumeUpload, getResumeUploadUrl };
+module.exports = { getResumeUploadUrl, confirmResumeUpload, getResumeViewUrl };
