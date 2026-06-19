@@ -37,9 +37,9 @@ const ManageCandidates = () => {
       c.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleViewResume = async () => {
+  const handleViewResume = async (resumeUrl) => {
   try {
-    const key = profile.resume_url.split('.amazonaws.com/')[1];
+    const key = resumeUrl.split('.amazonaws.com/')[1];
     const res = await api.post('/api/upload/resume/view-url', { key });
     window.open(res.data.url, '_blank');
   } catch (err) {
@@ -87,7 +87,7 @@ const ManageCandidates = () => {
                   <td className="px-4 py-3">
                     {c.resume_url ? (
                       <button
-                        onClick={handleViewResume}
+                        onClick={()=>handleViewResume(c.resume_url)}
                         className="text-blue-600 hover:underline text-sm">
                           View
                       </button>
